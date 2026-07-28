@@ -1,6 +1,6 @@
 # 🏦 apx-banca — Microservicio bancario inspirado en la arquitectura APX (BBVA)
 
-![CI](https://github.com/USUARIO/apx-banca/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/flinian/apx-banca/actions/workflows/ci.yml/badge.svg)
 
 Proyecto de práctica que replica la **filosofía y patrones de APX** (Arquitectura
 Plataforma Extendida de BBVA) usando **Spring Boot 3 puro y librerías open source**,
