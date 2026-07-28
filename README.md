@@ -2,6 +2,14 @@
 
 ![CI](https://github.com/flinian/apx-banca/actions/workflows/ci.yml/badge.svg)
 
+**🌐 Demo en vivo:** [apx-banca.onrender.com](https://apx-banca.onrender.com/actuator/health) — desplegada
+en Render (Docker) con CD automático en cada push a `main`.
+*Tier gratuito: la primera petición tras un rato de inactividad tarda ~1 min en despertar la instancia.*
+
+```bash
+curl https://apx-banca.onrender.com/clientes/1/cuentas
+```
+
 Proyecto de práctica que replica la **filosofía y patrones de APX** (Arquitectura
 Plataforma Extendida de BBVA) usando **Spring Boot 3 puro y librerías open source**,
 sobre un dominio bancario realista: cuentas, movimientos, transferencias,
