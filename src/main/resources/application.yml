@@ -49,7 +49,10 @@ app:
     topico-transferencias: banca.transferencias.realizadas
 
 server:
-  port: 8080
+  # ${PORT:8080}: si existe la variable de entorno PORT (la inyectan los PaaS
+  # como Render/Railway/Heroku), se usa; si no, 8080 en local. Mismo artefacto,
+  # configuracion por entorno (12-factor).
+  port: ${PORT:8080}
 
 # --------------------------------------------------------------------------
 # Observabilidad (principio #5 de APX).
