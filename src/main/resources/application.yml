@@ -44,7 +44,9 @@ app:
     tipo-cambio:
       # URL de la API externa de tipo de cambio. Apunta a esta misma app
       # porque el tercero esta SIMULADO dentro (paquete 'externo').
-      base-url: http://localhost:8080
+      # Usa ${PORT} igual que server.port: en un PaaS la app no escucha en
+      # 8080 sino en el puerto inyectado, y la auto-llamada debe seguirlo.
+      base-url: http://localhost:${PORT:8080}
   kafka:
     topico-transferencias: banca.transferencias.realizadas
 
