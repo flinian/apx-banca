@@ -1,0 +1,61 @@
+# ==========================================================================
+# CI: en cada push/PR a main se compila, se ejecutan los tests y se valida
+# que la imagen Docker construya. Si algo falla, el commit queda marcado
+# en rojo en GitHub.
+# ==========================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build y tests (Maven)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven   # cachea ~/.m2 entre ejecuciones: CI mucho mas rapido
+
+      - name: Build + tests
+        run: mvn -B verify
+
+      - name: Publicar reporte de tests
+        if: always()   # tambien cuando fallan, que es cuando mas se necesita
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 7
+
+  docker:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    needs: build-test   # solo si compila y los tests pasan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build de la imagen
+        run: docker build -t apx-banca:ci .
+
+      - name: Smoke test del contenedor
+        run: |
+          docker run -d --name apx -p 8080:8080 apx-banca:ci
+          # Espera activa a que el health check responda UP (max ~60s)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Contenedor sano"; exit 0
+            fi
+            sleep 2
+          done
+          echo "El contenedor no llego a estado UP"; docker logs apx; exit 1
