@@ -17,3 +17,6 @@ logs/
 # Sistema operativo
 Thumbs.db
 .DS_Store
+
+# Claude Code local
+.claude/
