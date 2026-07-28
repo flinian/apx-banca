@@ -1,0 +1,99 @@
+# ==========================================================================
+# Configuracion de la aplicacion.
+# Spring Boot lee este archivo automaticamente al arrancar.
+# ==========================================================================
+
+spring:
+  application:
+    # Nombre logico del microservicio: identifica al servicio en logs,
+    # metricas y trazas distribuidas (observabilidad estilo APX).
+    name: apx-banca
+
+  # ------------------------------------------------------------------------
+  # DataSource: la conexion al "mainframe" legacy simulado (H2 en memoria).
+  # ------------------------------------------------------------------------
+  datasource:
+    url: jdbc:h2:mem:banca;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  # Ejecuta schema.sql y data.sql al arrancar (BD en memoria: estado limpio
+  # y conocido en cada ejecucion).
+  sql:
+    init:
+      mode: always
+
+  # ------------------------------------------------------------------------
+  # Spring Batch (arquitectura batch de APX).
+  #   - initialize-schema: crea las tablas de metadatos BATCH_* en H2.
+  #   - job.enabled=false: los jobs NO se lanzan solos al arrancar; se
+  #     disparan bajo demanda (POST /batch/...) o desde un scheduler.
+  # ------------------------------------------------------------------------
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
+
+# --------------------------------------------------------------------------
+# Propiedades propias de la aplicacion (namespace 'app').
+# --------------------------------------------------------------------------
+app:
+  externo:
+    tipo-cambio:
+      # URL de la API externa de tipo de cambio. Apunta a esta misma app
+      # porque el tercero esta SIMULADO dentro (paquete 'externo').
+      base-url: http://localhost:8080
+  kafka:
+    topico-transferencias: banca.transferencias.realizadas
+
+server:
+  port: 8080
+
+# --------------------------------------------------------------------------
+# Observabilidad (principio #5 de APX).
+# --------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Cada linea de log incluye el traceId que inyecta TraceIdFilter via MDC:
+# se puede seguir UNA peticion a traves de todas las capas con un grep.
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-}]"
+
+---
+# ==========================================================================
+# Perfil 'kafka': se activa con --spring.profiles.active=kafka cuando hay un
+# broker disponible (ver docker-compose.yml). Sin este perfil, la app usa el
+# publisher de respaldo (LogTransferenciaEventPublisher) y arranca sin Kafka.
+# ==========================================================================
+spring:
+  config:
+    activate:
+      on-profile: kafka
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      # Serializamos el evento como JSON.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # acks=all: el broker confirma solo cuando el evento esta replicado.
+      # En banca, perder un evento no es aceptable.
+      acks: all
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        # Confiamos en los tipos de nuestro propio paquete al deserializar JSON.
+        spring.json.trusted.packages: com.practica.apx.connector.kafka
+        spring.json.value.default.type: com.practica.apx.connector.kafka.EventoTransferencia
