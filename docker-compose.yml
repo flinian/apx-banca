@@ -1,12 +1,25 @@
 # ==========================================================================
-# Infraestructura opcional para el perfil 'kafka'.
+# Despliegue local completo:
 #
-#   docker compose up -d
-#   mvn spring-boot:run -Dspring-boot.run.profiles=kafka
+#   docker compose up -d --build        -> app + kafka (perfil 'kafka' activo)
+#   docker compose up -d kafka          -> solo el broker (app con mvn)
 #
 # Kafka en modo KRaft (sin Zookeeper), un solo nodo, suficiente para demo.
 # ==========================================================================
 services:
+  app:
+    build: .
+    container_name: apx-banca
+    ports:
+      - "8080:8080"
+    environment:
+      # El mismo artefacto, distinta configuracion por entorno (12-factor):
+      # dentro de la red de compose, el broker se llama 'kafka', no localhost.
+      SPRING_PROFILES_ACTIVE: kafka
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - kafka
+
   kafka:
     image: apache/kafka:3.8.0
     container_name: apx-kafka
@@ -16,9 +29,12 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # Dos listeners: 9092 para clientes del host (mvn local) y 29092 para
+      # clientes DENTRO de la red de compose (el contenedor de la app).
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
